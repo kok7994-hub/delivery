@@ -1,0 +1,494 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Delivery route optimization API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: delivery-sessions
+    description: Delivery session management
+  - name: stops
+    description: Delivery stop management
+  - name: route
+    description: Route optimization
+  - name: extract
+    description: AI address extraction from images/PDFs
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /delivery-sessions:
+    get:
+      operationId: listDeliverySessions
+      tags: [delivery-sessions]
+      summary: List all delivery sessions
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeliverySession"
+    post:
+      operationId: createDeliverySession
+      tags: [delivery-sessions]
+      summary: Create a new delivery session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliverySessionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverySession"
+
+  /delivery-sessions/{id}:
+    get:
+      operationId: getDeliverySession
+      tags: [delivery-sessions]
+      summary: Get a delivery session with all stops
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session with stops
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverySessionDetail"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteDeliverySession
+      tags: [delivery-sessions]
+      summary: Delete a delivery session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /delivery-sessions/{id}/stops:
+    get:
+      operationId: listStops
+      tags: [stops]
+      summary: List all stops for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stop"
+    post:
+      operationId: createStop
+      tags: [stops]
+      summary: Add a stop to a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stop"
+
+  /delivery-sessions/{id}/stops/batch:
+    post:
+      operationId: batchCreateStops
+      tags: [stops]
+      summary: Add multiple stops at once
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopBatch"
+      responses:
+        "201":
+          description: Created stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stop"
+
+  /stops/{stopId}:
+    patch:
+      operationId: updateStop
+      tags: [stops]
+      summary: Update a stop (status, items, notes)
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stop"
+    delete:
+      operationId: deleteStop
+      tags: [stops]
+      summary: Delete a stop
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /delivery-sessions/{id}/optimize:
+    post:
+      operationId: optimizeRoute
+      tags: [route]
+      summary: Optimize delivery route for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OptimizeRouteInput"
+      responses:
+        "200":
+          description: Optimized route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptimizedRoute"
+
+  /extract/addresses:
+    post:
+      operationId: extractAddresses
+      tags: [extract]
+      summary: Extract addresses from base64-encoded image or PDF page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractAddressesInput"
+      responses:
+        "200":
+          description: Extracted address data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractAddressesResult"
+
+  /geocode:
+    get:
+      operationId: geocodeAddress
+      tags: [route]
+      summary: Geocode an address to lat/lng
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Geocoded coordinates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodeResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    DeliverySession:
+      type: object
+      required: [id, name, date, status, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+        startAddress:
+          type: ["string", "null"]
+        totalStops:
+          type: integer
+        completedStops:
+          type: integer
+        estimatedDurationMinutes:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    DeliverySessionInput:
+      type: object
+      required: [name, date]
+      properties:
+        name:
+          type: string
+        date:
+          type: string
+        startAddress:
+          type: string
+
+    DeliverySessionDetail:
+      type: object
+      required: [id, name, date, status, stops, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+        startAddress:
+          type: ["string", "null"]
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/Stop"
+        estimatedDurationMinutes:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    Stop:
+      type: object
+      required: [id, sessionId, address, orderIndex, status, createdAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        address:
+          type: string
+        recipientName:
+          type: ["string", "null"]
+        items:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        lat:
+          type: ["number", "null"]
+        lng:
+          type: ["number", "null"]
+        orderIndex:
+          type: integer
+        status:
+          type: string
+          enum: [pending, delivered, failed, skipped]
+        estimatedArrival:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    StopInput:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+        recipientName:
+          type: string
+        items:
+          type: string
+        notes:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+
+    StopUpdate:
+      type: object
+      properties:
+        address:
+          type: string
+        recipientName:
+          type: string
+        items:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [pending, delivered, failed, skipped]
+        orderIndex:
+          type: integer
+
+    StopBatch:
+      type: object
+      required: [stops]
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/StopInput"
+
+    OptimizeRouteInput:
+      type: object
+      properties:
+        startLat:
+          type: number
+        startLng:
+          type: number
+
+    OptimizedRoute:
+      type: object
+      required: [orderedStops, totalDistanceKm, estimatedDurationMinutes]
+      properties:
+        orderedStops:
+          type: array
+          items:
+            $ref: "#/components/schemas/Stop"
+        totalDistanceKm:
+          type: number
+        estimatedDurationMinutes:
+          type: integer
+        waypoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/Waypoint"
+
+    Waypoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+
+    ExtractAddressesInput:
+      type: object
+      required: [imageBase64, mimeType]
+      properties:
+        imageBase64:
+          type: string
+        mimeType:
+          type: string
+
+    ExtractedStop:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+        recipientName:
+          type: ["string", "null"]
+        items:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    ExtractAddressesResult:
+      type: object
+      required: [stops]
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtractedStop"
+        rawText:
+          type: ["string", "null"]
+
+    GeocodeResult:
+      type: object
+      required: [address, lat, lng]
+      properties:
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        displayName:
+          type: ["string", "null"]
